@@ -5,59 +5,96 @@ import { motion } from 'framer-motion'
 
 function AnimatedTitle({ isHud = false }: { isHud?: boolean }) {
   const text = "Merry Christmas"
+  const suffix = "For Dayday"
   
   return (
-    <div className="flex justify-center overflow-visible py-2">
-      {text.split("").map((char, i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
-          animate={{ 
-            opacity: 1, 
-            y: [0, -10, 0],
-            filter: "blur(0px)",
-            textShadow: [
-               isHud ? "0 0 20px rgba(240,230,140,0.5)" : "0 0 25px rgba(255,255,255,0.4)",
-               isHud ? "0 0 30px rgba(255,183,197,0.8)" : "0 0 35px rgba(255,192,203,0.6)",
-               isHud ? "0 0 20px rgba(240,230,140,0.5)" : "0 0 25px rgba(255,255,255,0.4)"
-            ],
-            color: isHud 
-              ? ["#F0E68C", "#FFB7C5", "#F0E68C"] 
-              : ["#FFFFFF", "#FFB7C5", "#FFFFFF"]
-          }}
-          transition={{
-            opacity: { duration: 1.5, delay: i * 0.1 },
-            filter: { duration: 1.5, delay: i * 0.1 },
-            y: {
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * 0.15
-            },
-            textShadow: {
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * 0.1
-            },
-            color: {
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * 0.2
-            }
-          }}
-          className={clsx(
-            "text-5xl md:text-7xl font-vibes tracking-wide select-none cursor-default",
-          )}
-          style={{ 
-             display: "inline-block",
-             marginRight: char === " " ? "0.3em" : "0.02em"
-          }}
-        >
-          {char === " " ? "\u00A0" : char}
-        </motion.span>
-      ))}
+    <div className="flex flex-col items-center">
+      <div className="flex justify-center overflow-visible py-2">
+        {text.split("").map((char, i) => (
+          <motion.span
+            key={i}
+            initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
+            animate={{ 
+              opacity: 1, 
+              y: [0, -10, 0],
+              filter: "blur(0px)",
+              textShadow: [
+                 isHud ? "0 0 20px rgba(240,230,140,0.5)" : "0 0 25px rgba(255,255,255,0.4)",
+                 isHud ? "0 0 30px rgba(255,183,197,0.8)" : "0 0 35px rgba(255,192,203,0.6)",
+                 isHud ? "0 0 20px rgba(240,230,140,0.5)" : "0 0 25px rgba(255,255,255,0.4)"
+              ],
+              color: isHud 
+                ? ["#F0E68C", "#FFB7C5", "#F0E68C"] 
+                : ["#FFFFFF", "#FFB7C5", "#FFFFFF"]
+            }}
+            transition={{
+              opacity: { duration: 1.5, delay: i * 0.1 },
+              filter: { duration: 1.5, delay: i * 0.1 },
+              y: {
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.15
+              },
+              textShadow: {
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.1
+              },
+              color: {
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * 0.2
+              }
+            }}
+            className={clsx(
+              "text-5xl md:text-7xl font-vibes tracking-wide select-none cursor-default",
+            )}
+            style={{ 
+               display: "inline-block",
+               marginRight: char === " " ? "0.3em" : "0.02em"
+            }}
+          >
+            {char === " " ? "\u00A0" : char}
+          </motion.span>
+        ))}
+      </div>
+
+      {isHud && (
+        <div className="flex justify-center mt-[-5px] md:mt-[-10px] ml-16 md:ml-24">
+           {suffix.split("").map((char, i) => (
+             <motion.span
+               key={`suffix-${i}`}
+               initial={{ opacity: 0, filter: "blur(5px)" }}
+               animate={{ 
+                 opacity: 1, 
+                 filter: "blur(0px)",
+                 textShadow: [
+                   "0 0 10px rgba(255, 183, 197, 0.5)", 
+                   "0 0 20px rgba(255, 255, 255, 0.6)", 
+                   "0 0 10px rgba(255, 183, 197, 0.5)"
+                 ],
+                 color: ["#FFC1D6", "#E8E8E8", "#FFC1D6"] // Pink -> Silver -> Pink
+               }}
+               transition={{
+                 duration: 3,
+                 repeat: Infinity,
+                 ease: "easeInOut",
+                 delay: 1.5 + i * 0.1
+               }}
+               className="text-3xl md:text-4xl font-vibes tracking-wide select-none cursor-default"
+               style={{ 
+                  display: "inline-block",
+                  marginRight: char === " " ? "0.3em" : "0.02em"
+               }}
+             >
+               {char === " " ? "\u00A0" : char}
+             </motion.span>
+           ))}
+        </div>
+      )}
     </div>
   )
 }

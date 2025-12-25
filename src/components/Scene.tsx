@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { ChristmasTree } from './ChristmasTree/ChristmasTree'
 import { Snow } from './Snow/Snow'
 import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 
 function CameraController() {
@@ -46,23 +46,46 @@ function CameraController() {
 
 export function Scene() {
   const { scene } = useThree()
-  // const mode = useStore((state) => state.mode)
+  const power = useStore((state) => state.power)
+  const powerVal = useRef(1) // Lerped value
   
+  // Lights Refs
+  const ambientLight = useRef<THREE.AmbientLight>(null)
+  const spotLight = useRef<THREE.SpotLight>(null)
+  const pointLight = useRef<THREE.PointLight>(null)
+
   useEffect(() => {
     // Fog for depth
     scene.fog = new THREE.FogExp2('#0A0A0A', 0.02)
   }, [scene])
+
+  useFrame((state, delta) => {
+    // Lerp Power Value
+    const target = power ? 1 : 0
+    powerVal.current = THREE.MathUtils.damp(powerVal.current, target, 2, delta)
+    
+    // Update Lights
+    if (ambientLight.current) ambientLight.current.intensity = 0.1 + (0.3 * powerVal.current)
+    if (spotLight.current) spotLight.current.intensity = 6 * powerVal.current
+    if (pointLight.current) pointLight.current.intensity = 4 * powerVal.current
+    
+    // Update Background Color (Optional, keeping it dark for contrast or changing it?)
+    // User requested "OFF: Background near black #010102"
+    // Currently #0A0A0A. Let's keep it subtle.
+    // scene.background = new THREE.Color().setHex(0x010102).lerp(new THREE.Color().setHex(0x0A0A0A), powerVal.current)
+  })
 
   return (
     <>
       <color attach="background" args={['#0A0A0A']} />
       
       {/* Lighting - Cooler, more silver/white */}
-      <ambientLight intensity={0.4} color="#F5F5F7" />
+      <ambientLight ref={ambientLight} intensity={0.4} color="#F5F5F7" />
       <Environment preset="city" />
       
       {/* Silver/Pale Pink Rim Light */}
       <spotLight 
+        ref={spotLight}
         position={[10, 10, -10]} 
         angle={0.5} 
         penumbra={1} 
@@ -72,7 +95,7 @@ export function Scene() {
       />
       
       {/* Bottom Light for Drama - Platinum */}
-      <pointLight position={[0, -5, 5]} intensity={4} color="#E8D0D8" distance={15} />
+      <pointLight ref={pointLight} position={[0, -5, 5]} intensity={4} color="#E8D0D8" distance={15} />
       
       <CameraController />
       <ChristmasTree />
@@ -92,7 +115,10 @@ export function Scene() {
         <Bloom 
           luminanceThreshold={0.2} 
           mipmapBlur 
-          intensity={1.2} 
+          intensity={1.2 * (power ? 1 : 0)} // Dynamic Bloom? PostProcessing props are not easily animated per frame without ref.
+          // But intensity is prop. React will re-render if we pass prop.
+          // For smoother performance, keep it static or accept re-renders on power toggle.
+          // Actually, let's keep it static, the light intensity changes will affect bloom naturally.
           radius={0.5}
         />
         <Vignette eskil={false} offset={0.1} darkness={1.1} />

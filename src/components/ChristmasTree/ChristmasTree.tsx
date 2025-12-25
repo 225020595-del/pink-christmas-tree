@@ -12,9 +12,11 @@ export function ChristmasTree() {
   const toggleMode = useStore((state) => state.toggleMode)
   const targetRotationY = useStore((state) => state.targetRotationY)
   const interactionMode = useStore((state) => state.interactionMode)
+  const power = useStore((state) => state.power)
   
   const progress = useRef(0) // 0 = EXPLODE (Initial), 1 = TREE
   const group = useRef<Group>(null)
+  const powerProgress = useRef(1) // 0 = OFF, 1 = ON
   
   // Entrance Animation State
   const [entered, setEntered] = useState(false)
@@ -26,6 +28,10 @@ export function ChristmasTree() {
   }, [])
 
   useFrame((_state, delta) => {
+    // Power State Interpolation
+    const targetPower = power ? 1 : 0
+    powerProgress.current = MathUtils.damp(powerProgress.current, targetPower, 2, delta)
+
     // 0. Entrance Animation (Scale Up)
     if (group.current) {
       const targetScale = entered ? 1 : 0.01
@@ -41,8 +47,12 @@ export function ChristmasTree() {
     
     // 2. Rotation Logic
     if (group.current) {
-      // Base rotation
-      let rotSpeed = 0.1 * delta
+      // Base rotation (Only if power ON)
+      // Lerp speed based on powerProgress
+      let baseSpeed = 0.2 // Music box feel
+      if (powerProgress.current < 0.1) baseSpeed = 0
+      
+      let rotSpeed = baseSpeed * delta * powerProgress.current
       
       // Gesture override
       if (interactionMode === 'GESTURE' && targetRotationY !== 0) {
@@ -71,8 +81,11 @@ export function ChristmasTree() {
       </mesh>
 
       <Foliage progress={progress} />
-      <Ornaments progress={progress} />
-      <Star progress={progress} />
+      {/* Ornaments and Star depend on Power */}
+      <group scale={powerProgress.current}>
+         <Ornaments progress={progress} />
+         <Star progress={progress} />
+      </group>
     </group>
   )
 }

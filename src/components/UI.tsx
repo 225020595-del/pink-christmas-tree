@@ -350,9 +350,10 @@ export function UI() {
           <h3 className="text-xl text-dream-pink mb-2 border-b border-white/20 pb-1 inline-block">操作指南 (Controls)</h3>
           {interactionMode === 'GESTURE' ? (
             <ul className="space-y-1 text-sm">
-              <li>👌 <b>食指拇指捏合 + 移动</b>: 旋转/缩放 (Pinch & Drag)</li>
-              <li>✊ <b>握拳保持1秒</b>: 聚拢成树 (Hold Fist)</li>
-              <li>✋ <b>张开手掌保持1秒</b>: 粒子爆发 (Hold Open)</li>
+              <li>✊⬇️ <b>握拳+快速下拽</b>: 电源开关 (Power Toggle)</li>
+              <li>👌 <b>食指拇指捏合</b>: 聚拢成树 (Form Tree)</li>
+              <li>✋ <b>五指张开</b>: 粒子爆发 (Explode)</li>
+              <li>👆↔️ <b>食指+左右移动</b>: 旋转树体 (Rotate)</li>
             </ul>
           ) : (
             <ul className="space-y-1 text-sm">

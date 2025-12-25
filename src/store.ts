@@ -23,6 +23,9 @@ type AppState = {
 
   isAwake: boolean
   setAwake: (awake: boolean) => void
+
+  viewMode: 'PC' | 'MOBILE'
+  setViewMode: (mode: 'PC' | 'MOBILE') => void
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -48,4 +51,7 @@ export const useStore = create<AppState>((set) => ({
 
   isAwake: false,
   setAwake: (awake) => set({ isAwake: awake }),
+
+  viewMode: 'PC', // Default to PC
+  setViewMode: (mode) => set({ viewMode: mode }),
 }))

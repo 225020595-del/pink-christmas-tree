@@ -10,7 +10,22 @@ import * as THREE from 'three'
 function CameraController() {
   const targetDistance = useStore((state) => state.targetDistance)
   const interactionMode = useStore((state) => state.interactionMode)
+  const viewMode = useStore((state) => state.viewMode)
   const { camera } = useThree()
+  
+  // Adjust FOV based on View Mode
+  useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera
+    if (viewMode === 'MOBILE') {
+      cam.fov = 65 // Wider FOV for portrait mode
+      if (cam.position.z < 18) {
+        cam.position.z = 18 // Push back further if too close
+      }
+    } else {
+      cam.fov = 50 // Standard FOV for PC
+    }
+    cam.updateProjectionMatrix()
+  }, [viewMode, camera])
   
   useFrame(() => {
     if (interactionMode === 'GESTURE') {

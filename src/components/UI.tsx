@@ -106,6 +106,8 @@ export function UI() {
   const setInteractionMode = useStore((state) => state.setInteractionMode)
   const audioPlaying = useStore((state) => state.audioPlaying)
   const toggleAudio = useStore((state) => state.toggleAudio)
+  const viewMode = useStore((state) => state.viewMode)
+  const setViewMode = useStore((state) => state.setViewMode)
   const isAwake = useStore((state) => state.isAwake)
   const setAwake = useStore((state) => state.setAwake)
   
@@ -217,6 +219,32 @@ export function UI() {
       >
         <div className="text-center p-8 border border-white/10 bg-white/5 rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
           <AnimatedTitle />
+
+          {/* View Mode Switcher */}
+          <div className="mt-8 mb-8 flex justify-center gap-4 pointer-events-auto">
+            <button
+              onClick={() => setViewMode('PC')}
+              className={clsx(
+                "px-4 py-2 rounded-full border text-sm font-medium transition-all duration-300 backdrop-blur-sm",
+                viewMode === 'PC' 
+                  ? "bg-white/20 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.5)]" 
+                  : "bg-black/20 border-white/30 text-white/50 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              💻 PC View
+            </button>
+            <button
+              onClick={() => setViewMode('MOBILE')}
+              className={clsx(
+                "px-4 py-2 rounded-full border text-sm font-medium transition-all duration-300 backdrop-blur-sm",
+                viewMode === 'MOBILE' 
+                  ? "bg-white/20 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.5)]" 
+                  : "bg-black/20 border-white/30 text-white/50 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              📱 Mobile View
+            </button>
+          </div>
 
           {/* Dynamic Puppy Text */}
           <div className="mb-12 flex justify-end flex-wrap gap-x-1 pr-12">

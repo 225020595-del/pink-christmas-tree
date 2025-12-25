@@ -26,12 +26,6 @@ export function GestureController() {
   const prevWristY = useRef(0)
   const lastPowerToggle = useRef(0)
 
-  // Zoom State (Pinch & Drag)
-  const isPinching = useRef(false)
-  const pinchStartY = useRef<number>(0)
-  const pinchStartDist = useRef<number>(12)
-  const currentDistRef = useRef<number>(12)
-
   // Mode Switch Debounce
   const gestureHistory = useRef<string[]>([])
   

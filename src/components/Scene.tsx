@@ -59,7 +59,7 @@ export function Scene() {
     scene.fog = new THREE.FogExp2('#0A0A0A', 0.02)
   }, [scene])
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     // Lerp Power Value
     const target = power ? 1 : 0
     powerVal.current = THREE.MathUtils.damp(powerVal.current, target, 2, delta)

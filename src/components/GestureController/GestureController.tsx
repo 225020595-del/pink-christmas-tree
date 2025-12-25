@@ -22,9 +22,14 @@ export function GestureController() {
   const smoothCursor = useRef(new THREE.Vector2(0, 0))
   const lastVideoTime = useRef(-1)
 
-  // Zoom State
-  const baseHandDistance = useRef<number | null>(null)
-  const baseCameraDistance = useRef<number>(12)
+  // Zoom State (Pinch & Drag)
+  const isPinching = useRef(false)
+  const pinchStartY = useRef<number>(0)
+  const pinchStartDist = useRef<number>(12)
+  const currentDistRef = useRef<number>(12)
+
+  // Mode Switch Debounce
+  const gestureHistory = useRef<string[]>([])
   
   // Load model
   useEffect(() => {
@@ -39,7 +44,10 @@ export function GestureController() {
             delegate: "GPU"
           },
           runningMode: "VIDEO",
-          numHands: 2
+          numHands: 2,
+          minHandDetectionConfidence: 0.6,
+          minHandPresenceConfidence: 0.6,
+          minTrackingConfidence: 0.6
         })
         setRecognizer(gestureRecognizer)
         setLoaded(true)
@@ -54,9 +62,6 @@ export function GestureController() {
   useEffect(() => {
     if (interactionMode !== 'GESTURE' || !recognizer || !webcamRef.current?.video) return
     
-    // Initial distance
-    let currentDist = 12
-
     const detect = () => {
       if (webcamRef.current?.video?.readyState === 4) {
         const video = webcamRef.current.video
@@ -71,105 +76,138 @@ export function GestureController() {
 
         const results = recognizer.recognizeForVideo(video, now)
         
-        if (results.gestures.length > 0) {
-          const gesture = results.gestures[0][0].categoryName
-          // const handedness = results.handedness[0][0].categoryName // "Left" or "Right"
-          
-          // 1. Mode Switch Logic
-          if (gesture === 'Closed_Fist' || gesture === 'Pointing_Up' || gesture === 'Victory') {
-             // Pinch/Grab usually maps to Fist in simple recognizer unless using HandLandmarker directly
-             // Let's use Fist for "Grab/Form"
-             setMode('TREE')
-          } else if (gesture === 'Open_Palm') {
-             setMode('EXPLODE')
-          }
-          
-          // 2. Cursor & Rotation & Zoom Logic
-          if (results.landmarks.length > 0) {
+        // Default: No Pinch
+        let currentPinch = false
+        
+        if (results.landmarks.length > 0) {
+            const hand = results.landmarks[0]
+            const tipIndex = hand[8]
+            const tipThumb = hand[4]
+
+            // --- 1. PINCH DETECTION (Thumb + Index distance) ---
+            // Calculate distance in 3D (approx) or just 2D
+            const dx = tipIndex.x - tipThumb.x
+            const dy = tipIndex.y - tipThumb.y
+            // const dz = tipIndex.z - tipThumb.z // z is relative depth
+            const pinchDist = Math.sqrt(dx*dx + dy*dy)
             
-            // --- TWO HANDS: ZOOM ---
-            if (results.landmarks.length === 2) {
-                const hand1 = results.landmarks[0][8] // Index tip
-                const hand2 = results.landmarks[1][8] // Index tip
+            // Threshold for pinch (tune this: 0.05 is usually good for closed pinch)
+            if (pinchDist < 0.05) {
+                currentPinch = true
+            }
+
+            // --- 2. LOGIC ---
+            if (currentPinch) {
+                // PINCHED: Control Camera (Zoom & Rotate)
                 
-                // Calculate distance between hands (in screen space 0..1)
-                const dx = hand1.x - hand2.x
-                const dy = hand1.y - hand2.y
-                const dist = Math.sqrt(dx*dx + dy*dy)
-                
-                if (baseHandDistance.current === null) {
-                    // Start zooming
-                    baseHandDistance.current = dist
-                    baseCameraDistance.current = currentDist
+                if (!isPinching.current) {
+                    // Start Pinch
+                    isPinching.current = true
+                    pinchStartY.current = tipIndex.y // 0..1 (0 is top, 1 is bottom)
+                    pinchStartDist.current = currentDistRef.current
+                    // Lock cursor style if possible
+                    if (cursorRef.current) {
+                        cursorRef.current.style.borderColor = '#FFD700' // Gold
+                        cursorRef.current.style.backgroundColor = 'rgba(255, 215, 0, 0.3)'
+                    }
                 } else {
-                    // Apply zoom
-                    // Factor: How much hands moved relative to base
-                    // If dist > base -> Zoom In (Get Closer, distance decreases)
-                    // If dist < base -> Zoom Out (Get Farther, distance increases)
+                    // Dragging
+                    // Y-axis movement -> Zoom
+                    // Moving UP (y decreases) -> Zoom IN (dist decreases)
+                    // Moving DOWN (y increases) -> Zoom OUT (dist increases)
                     
-                    const delta = dist - baseHandDistance.current
-                    // Sensitivity factor
-                    const sensitivity = 15 
+                    const deltaY = tipIndex.y - pinchStartY.current
+                    const sensitivity = 20 
                     
-                    // Invert: Expand hands -> Decrease camera distance (Zoom In)
-                    let newDist = baseCameraDistance.current - (delta * sensitivity)
+                    let newDist = pinchStartDist.current + (deltaY * sensitivity)
                     newDist = THREE.MathUtils.clamp(newDist, 5, 30)
                     
-                    currentDist = newDist // Update local tracker
+                    currentDistRef.current = newDist
                     setTargetDistance(newDist)
+                    
+                    // X-axis movement -> Rotate (Optional, or separate?)
+                    // Let's keep Rotate logic separate below for simplicity? 
+                    // Or combine: Drag X -> Rotate, Drag Y -> Zoom
+                    // The user asked for "Rotate finger to zoom", but pinch-drag is better.
+                    // Let's enable Rotation here too for full control
+                    
+                    const centerX = 0.5
+                    let deltaX = (1 - tipIndex.x) - centerX
+                    // Deadzone
+                    if (Math.abs(deltaX) < 0.1) deltaX = 0
+                    else deltaX = Math.sign(deltaX) * (Math.abs(deltaX) - 0.1) / 0.4
+                    
+                    setTargetRotationY(deltaX * 1.5)
+                }
+                
+                // Clear gesture history to prevent state switch during pinch
+                gestureHistory.current = []
+
+            } else {
+                // NOT PINCHED: Hover & State Switch
+                if (isPinching.current) {
+                    // Just released
+                    isPinching.current = false
+                    if (cursorRef.current) {
+                        cursorRef.current.style.borderColor = '#FF69B4' // Pink
+                        cursorRef.current.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+                    }
+                    // Reset rotation target to stop spinning when released
+                    setTargetRotationY(0)
                 }
 
-                // Hide cursor during 2-hand zoom to avoid confusion
-                if (cursorRef.current) cursorRef.current.style.opacity = '0'
+                // 3. MODE SWITCH (Debounced)
+                // Only if NOT pinching
+                let gesture = ""
+                if (results.gestures.length > 0) {
+                     gesture = results.gestures[0][0].categoryName
+                }
                 
-            } else {
-                // --- ONE HAND: ROTATE & CURSOR ---
-                // Reset Zoom Base
-                baseHandDistance.current = null
-                baseCameraDistance.current = currentDist // Sync for next time
-
-                const hand = results.landmarks[0]
-                const tip = hand[8]
+                // Push to history
+                gestureHistory.current.push(gesture)
+                if (gestureHistory.current.length > 20) gestureHistory.current.shift() // Keep last 1s (20 frames)
                 
+                // Check if stable
+                const isStableOpen = gestureHistory.current.every(g => g === 'Open_Palm')
+                const isStableFist = gestureHistory.current.every(g => g === 'Closed_Fist')
+                
+                if (isStableFist && gestureHistory.current.length === 20) {
+                     setMode('TREE')
+                     // Clear to avoid re-trigger
+                     gestureHistory.current = [] 
+                } else if (isStableOpen && gestureHistory.current.length === 20) {
+                     setMode('EXPLODE')
+                     gestureHistory.current = []
+                }
+                
+                // 4. Cursor Update (Follow Hand)
                 // Map 0..1 to Screen Coordinates
-                const x = (1 - tip.x) * window.innerWidth
-                const y = tip.y * window.innerHeight
+                const x = (1 - tipIndex.x) * window.innerWidth
+                const y = tipIndex.y * window.innerHeight
                 
-                // Smooth lerp
                 smoothCursor.current.x = THREE.MathUtils.lerp(smoothCursor.current.x, x, 0.4)
                 smoothCursor.current.y = THREE.MathUtils.lerp(smoothCursor.current.y, y, 0.4)
                 
-                // Direct DOM update
                 if (cursorRef.current) {
                     cursorRef.current.style.opacity = '1'
                     cursorRef.current.style.left = `${smoothCursor.current.x}px`
                     cursorRef.current.style.top = `${smoothCursor.current.y}px`
                 }
                 
-                // Rotation (Horizontal X)
-                const centerX = 0.5
-                let deltaX = (1 - tip.x) - centerX
-                
-                if (Math.abs(deltaX) < 0.1) {
-                  deltaX = 0
-                } else {
-                  deltaX = Math.sign(deltaX) * (Math.abs(deltaX) - 0.1) / 0.4
-                }
-                
-                setTargetRotationY(deltaX * 1.5) 
+                // Rotation (When not pinching, just hovering left/right can also rotate? 
+                // Or should we restrict rotation to Pinch? 
+                // User complained about "too sensitive". 
+                // Let's RESTRICT Rotation to Pinching for stability, OR make hover rotation very subtle.
+                // Let's DISABLE hover rotation to prevent "accidental" moves. 
+                // Only Pinch-Drag rotates and zooms.
+                setTargetRotationY(0) 
             }
-
-          } else {
-             // No hands
-             baseHandDistance.current = null
-          }
         } else {
-          // Hide cursor
-          if (cursorRef.current) {
-             cursorRef.current.style.opacity = '0'
-          }
-          setTargetRotationY(0)
-          baseHandDistance.current = null
+            // No Hand
+            isPinching.current = false
+            setTargetRotationY(0)
+            if (cursorRef.current) cursorRef.current.style.opacity = '0'
+            gestureHistory.current = []
         }
       }
       requestRef.current = requestAnimationFrame(detect)
